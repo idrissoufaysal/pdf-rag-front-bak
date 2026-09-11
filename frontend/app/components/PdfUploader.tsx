@@ -97,7 +97,7 @@ const PdfUploader: React.FC<Props> = ({ setPdfText, setFileId, setSelectedFile }
             />
             <label htmlFor="file-upload" className={`${styles.label} ${styles.mainBtn} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
               style={isLoading ? { cursor: 'not-allowed' } : {}}>
-              <MdCloudUpload /> Upload your PDF
+              <MdCloudUpload /> Ajouter un document
             </label>
           </>
         )}

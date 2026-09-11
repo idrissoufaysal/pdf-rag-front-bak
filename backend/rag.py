@@ -141,33 +141,11 @@ async def ingest_file(file_path: Path, original_filename: Optional[str] = None) 
 
 
 
-# --- Execution RAG avec Langfuse Callbacks ---
-
-@observe(name="rag-query-pipeline")
-def run_rag(query: str, chat_history: List[BaseMessage], session_id: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Any]:
-    """Version synchrone (CLI)."""
-    with propagate_attributes(trace_name="rag-chat", session_id=session_id):
-        callbacks = [langfuse_handler] if langfuse_handler else []
-
-        standalone_q = history_aware_question_chain.invoke(
-            {"input": query, "chat_history": chat_history},
-            config={"callbacks": callbacks}
-        ) if chat_history else query
-
-        docs = retriever.invoke(standalone_q, config={"callbacks": callbacks})
-        sources = extract_sources_metadata(docs)
-        context = format_docs(docs)
-
-        stream = final_chain.stream(
-            {"context": context, "chat_history": chat_history, "input": query},
-            config={"callbacks": callbacks}
-        )
-        return sources, stream
-
+# --- Execution RAG avec Streaming (FastAPI) & Langfuse Callbacks ---
 
 @observe(name="rag-query-stream")
 async def run_rag_astream(query: str, chat_history: List[BaseMessage], session_id: Optional[str] = None) -> Tuple[List[Dict[str, Any]], AsyncGenerator[str, None]]:
-    """Version asynchrone (FastAPI)."""
+    """Version asynchrone pour FastAPI avec streaming SSE."""
     with propagate_attributes(trace_name="rag-chat-stream", session_id=session_id):
         callbacks = [langfuse_handler] if langfuse_handler else []
 
@@ -190,43 +168,3 @@ async def run_rag_astream(query: str, chat_history: List[BaseMessage], session_i
 
         return sources, stream_gen()
 
-
-# --- CLI Terminal Loop ---
-if __name__ == "__main__":
-    import uuid
-    session_id = f"cli-session-{uuid.uuid4().hex[:8]}"
-    chat_history: List[BaseMessage] = []
-    print(f"🤖 Chatbot RAG Prêt (Langfuse Session: {session_id} + Reranker + Sources Intelligentes) !\n")
-
-    while True:
-        user_input = input("Vous : ")
-        if user_input.lower() in ["exit", "quit"]:
-            if langfuse_handler:
-                try:
-                    from langfuse import get_client
-                    get_client().flush()
-                except Exception:
-                    pass
-            break
-
-        sources, stream = run_rag(user_input, chat_history, session_id=session_id)
-
-        print("\nAssistant : ", end="")
-        full_response = ""
-        for chunk in stream:
-            print(chunk, end="", flush=True)
-            full_response += chunk
-
-        # Filtrage dynamique des sources pour les petites salutations / refus
-        relevant_sources = filter_sources_by_relevance(user_input, sources, full_response)
-        
-        if relevant_sources:
-            print("\n\n📚 Sources utilisées :")
-            for s in relevant_sources:
-                page_str = f" (Page {s['page']})" if 'page' in s else ""
-                print(f"  • {s['file']}{page_str}")
-            
-        print("\n" + "-"*50 + "\n")
-
-        chat_history.append(HumanMessage(content=user_input))
-        chat_history.append(AIMessage(content=full_response))

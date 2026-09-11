@@ -23,6 +23,12 @@ app.add_middleware(
 )
 
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
+
 # --- Schemas Pydantic ---
 class ChatMessage(BaseModel):
     role: str = Field(..., description="'user' ou 'assistant'")

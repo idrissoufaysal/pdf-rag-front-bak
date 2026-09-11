@@ -1,19 +1,24 @@
 # PDF RAG Monorepo (Frontend + Backend)
 
-Monorepo pour l'application RAG (Retrieval-Augmented Generation) sur documents PDF, comprenant une interface web interactive et une API de traitement et recherche vectorielle / hybride.
+Monorepo pour l'application RAG (Retrieval-Augmented Generation) sur documents PDF, comprenant une interface web Next.js et une API Python FastAPI haute performance avec recherche vectorielle via ChromaDB et embeddings Perplexity (`pplx-embed-v1-0.6b`).
 
-## 📁 Structure du projet
+## 📁 Architecture du projet
 
 ```
 pdf-rag-front-bak/
 ├── backend/
-│   └── rag1/               # Service Backend RAG (FastAPI, LangChain, ChromaDB, BM25, UV)
-│       ├── api.py          # Points de terminaison FastAPI (chat, upload PDF, indexation)
-│       ├── rag.py          # Logique RAG, recherche hybride (EnsembleRetriever)
-│       ├── pyproject.toml  # Dépendances Python (uv)
-│       └── Dockerfile      # Configuration Docker
-└── frontend/               # Application Frontend (Next.js 14, React, Tailwind CSS)
-    ├── app/                # Pages et composants Next.js (Chat, Visualiseur PDF)
+│   ├── main.py             # Point d'entrée FastAPI (endpoints: /health, /api/upload, /api/chat/stream)
+│   ├── rag.py              # Moteur RAG (OpenRouter Perplexity Embeddings, ChromaDB, Flashrank, LangChain)
+│   ├── pyproject.toml      # Dépendances Python (uv)
+│   ├── uv.lock
+│   ├── Dockerfile          # Image de conteneurisation FastAPI
+│   └── docker-compose.yml  # Déploiement Docker Compose
+└── frontend/               # Application Frontend (Next.js, React, Tailwind CSS)
+    ├── app/
+    │   ├── components/     # Chat.tsx, PDFViewer.tsx, PdfUploader.tsx
+    │   ├── utils/          # config.ts (BACKEND_URL), fetchRAGResponse.ts (appels directs FastAPI)
+    │   ├── page.tsx        # Vue principale
+    │   └── layout.tsx
     ├── package.json        # Dépendances Node.js
     └── tsconfig.json       # Configuration TypeScript
 ```
@@ -22,37 +27,36 @@ pdf-rag-front-bak/
 
 ## 🚀 Démarrage rapide
 
-### 1. Backend (`backend/rag1`)
+### 1. Backend (`backend`)
 
-Le backend utilise Python et `uv` (ou `pip` / `venv`) avec FastAPI.
+Le backend utilise Python 3.12 et `uv` avec FastAPI.
 
 ```bash
-cd backend/rag1
+cd backend
 
 # Installation des dépendances avec uv
 uv sync
 
-# Configuration de l'environnement (.env requis pour les clés d'API LLM / Embeddings)
 # Lancer le serveur FastAPI
-uv run python -m uvicorn api:app --reload --port 8000
+uv run python -m uvicorn main:app --reload --port 8000
 ```
 
-Le backend est accessible sur `http://localhost:8000` (Documentation OpenAPI Swagger : `http://localhost:8000/docs`).
+- API : `http://localhost:8000`
+- Documentation Swagger : `http://localhost:8000/docs`
+- Health check : `http://localhost:8000/health`
 
 ### 2. Frontend (`frontend`)
 
-Le frontend est développé avec Next.js.
+Le frontend est développé avec Next.js et communique directement avec l'API FastAPI.
 
 ```bash
 cd frontend
 
 # Installation des dépendances
 npm install
-# ou yarn / pnpm
 
-# Configuration (.env.local)
 # Lancer le serveur de développement
 npm run dev
 ```
 
-L'application web est accessible sur `http://localhost:3000`.
+- Application Web : `http://localhost:3000`
