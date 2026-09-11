@@ -8,9 +8,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -37,10 +36,15 @@ if os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"):
         langfuse_handler = None
 
 # --- Initialisation Singleton ---
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+embeddings = OpenAIEmbeddings(
+    model="perplexity/pplx-embed-v1-0.6b",
+    openai_api_key=os.getenv("OPENROUTER_KEY"),
+    openai_api_base="https://openrouter.ai/api/v1",
+    check_embedding_ctx_length=False
+)
 vector_store = Chroma(persist_directory="./.chroma_db", embedding_function=embeddings)
 
-# 1. Base Retriever (Récupère 15 candidats larges)
+# 1. Base Retriever (Récupère 10 candidats larges)
 base_retriever = vector_store.as_retriever(search_kwargs={"k": 10})
 
 # 2. Reranker (Sélectionne les 3 meilleurs candidats réels)
@@ -119,9 +123,12 @@ def filter_sources_by_relevance(query: str, sources: List[Dict[str, Any]], full_
 
 # --- Ingestion ---
 @observe(name="rag-ingest-file")
-async def ingest_file(file_path: Path) -> int:
+async def ingest_file(file_path: Path, original_filename: Optional[str] = None) -> int:
     loader = PyPDFLoader(str(file_path)) if file_path.suffix.lower() == ".pdf" else TextLoader(str(file_path), encoding="utf-8")
     raw_docs = loader.load()
+    if original_filename:
+        for doc in raw_docs:
+            doc.metadata["source"] = original_filename
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_documents(raw_docs)
     if not chunks:

@@ -1,11 +1,15 @@
+import os
 from pathlib import Path
 from typing import List
+from dotenv import load_dotenv
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+load_dotenv()
 
 
 def load_and_split(file_path: Path) -> List[Document]:
@@ -17,8 +21,12 @@ def load_and_split(file_path: Path) -> List[Document]:
 
 def create_vector_store(documents: List[Document], persist_directory: str = "./.chroma_db"):
     """Transforme les chunks en vecteurs et les persiste localement dans ChromaDB."""
-    # Modèle d'embedding léger (384 dimensions), tournant 100% en local sur votre CPU
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2",)
+    embeddings = OpenAIEmbeddings(
+        model="perplexity/pplx-embed-v1-0.6b",
+        openai_api_key=os.getenv("OPENROUTER_KEY"),
+        openai_api_base="https://openrouter.ai/api/v1",
+        check_embedding_ctx_length=False
+    )
 
     print("Vectorisation et indexation dans ChromaDB en cours...")
     vector_store = Chroma.from_documents(

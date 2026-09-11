@@ -47,7 +47,7 @@ async def upload_file_endpoint(file: UploadFile = File(...)):
         temp_path = Path(temp_file.name)
 
     try:
-        nb_chunks = await ingest_file(temp_path)
+        nb_chunks = await ingest_file(temp_path, original_filename=file.filename)
         return {"message": f"Fichier '{file.filename}' indexé avec succès !", "chunks_added": nb_chunks}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
