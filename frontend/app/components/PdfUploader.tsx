@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styles from '../styles/PdfUploader.module.css';
 import { MdCloudUpload } from "react-icons/md";
-import { uploadAndVectorizePDF } from '../utils/fetchRAGResponse';
+import { BACKEND_URL } from '../utils/config';
 
 type Props = {
   setPdfText: React.Dispatch<React.SetStateAction<string>>;
@@ -24,16 +24,26 @@ const PdfUploader: React.FC<Props> = ({ setPdfText, setFileId, setSelectedFile }
     setStatus('Envoi et indexation du fichier en cours...');
 
     try {
-      const result = await uploadAndVectorizePDF(file);
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (result.success) {
-        setStatus(`Fichier indexé avec succès (${result.chunksAdded} chunks).`);
-        setFileId(result.fileId);
-        setPdfText(file.name);
-      } else {
-        setError(result.message);
-        setStatus('');
+      const response = await fetch(`${BACKEND_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || errData.error || "Erreur lors de l'upload du fichier");
       }
+
+      const data = await response.json();
+      const chunksAdded = typeof data.chunks_added === 'number' ? data.chunks_added : 0;
+      const generatedFileId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      setStatus(`Fichier indexé avec succès (${chunksAdded} chunks).`);
+      setFileId(generatedFileId);
+      setPdfText(file.name);
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue lors de l\'upload.');
       setStatus('');

@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createSourceLink, formatSourceForDisplay, BackendSource } from '../utils/fetchRAGResponse';
 import Image from 'next/image';
 import MarkdownRenderer from './MarkdownRenderer';
 import { BACKEND_URL } from '../utils/config';
+
+export interface BackendSource {
+  file: string;
+  page?: number;
+  snippet: string;
+}
 
 type ChatProps = {
   pdfText: string;
@@ -206,14 +211,14 @@ const Chat: React.FC<ChatProps> = ({ pdfText, fileId, onSourceClick }) => {
                     {sources.map((src, i) => (
                       <li key={i}>
                         <a
-                          href={createSourceLink(src, fileId)}
+                          href={`#page=${src.page ?? 1}`}
                           onClick={(e) => {
                             e.preventDefault();
                             onSourceClick?.(src.page);
                           }}
                           style={{ color: '#0070f3', textDecoration: 'underline', cursor: 'pointer' }}
                         >
-                          [{i + 1}] {formatSourceForDisplay(src)}
+                          [{i + 1}] {src.page ? `Page ${src.page}` : src.file}
                         </a>
                       </li>
                     ))}
