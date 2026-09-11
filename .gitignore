@@ -1,0 +1,91 @@
+# ==============================================================================
+# Monorepo Root .gitignore (Frontend Next.js + Backend Python/FastAPI)
+# ==============================================================================
+
+# Git backup
+.git_backup/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+!.env*.example
+
+# ------------------------------------------------------------------------------
+# Frontend (Next.js / Node.js)
+# ------------------------------------------------------------------------------
+node_modules/
+frontend/node_modules/
+.pnp
+.pnp.js
+coverage/
+frontend/coverage/
+
+# Next.js build output
+.next/
+frontend/.next/
+out/
+frontend/out/
+build/
+frontend/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+frontend/dev.log
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+frontend/next-env.d.ts
+
+# Vercel
+.vercel/
+
+# ------------------------------------------------------------------------------
+# Backend (Python / FastAPI / LangChain / ChromaDB)
+# ------------------------------------------------------------------------------
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+*/.venv/
+*/*/.venv/
+env/
+venv/
+ENV/
+
+# Python packaging
+dist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Linting
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ChromaDB & Vector Stores
+.chroma_db/
+*/.chroma_db/
+*/*/.chroma_db/
+*.sqlite3
+
+# ------------------------------------------------------------------------------
+# OS & IDE Files
+# ------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

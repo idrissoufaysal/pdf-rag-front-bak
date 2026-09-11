@@ -1,0 +1,17 @@
+services:
+  rag-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag_api_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Volume nommé pour persister la base vectorielle ChromaDB
+      - chroma_data:/app/.chroma_db
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
