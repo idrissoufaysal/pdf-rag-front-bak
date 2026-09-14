@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, AsyncGenerator, Tuple, Dict, Any, Optional
 from dotenv import load_dotenv
 
+import chromadb
 from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
@@ -35,14 +36,20 @@ if os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"):
         print(f"⚠️ Erreur Langfuse init: {e}")
         langfuse_handler = None
 
-# --- Initialisation Singleton ---
+# --- Initialisation Singleton (100% In-Memory / Non-persistant) ---
 embeddings = OpenAIEmbeddings(
     model="perplexity/pplx-embed-v1-0.6b",
     openai_api_key=os.getenv("OPENROUTER_KEY"),
     openai_api_base="https://openrouter.ai/api/v1",
     check_embedding_ctx_length=False
 )
-vector_store = Chroma(persist_directory="./.chroma_db", embedding_function=embeddings)
+
+chroma_client = chromadb.EphemeralClient()
+vector_store = Chroma(
+    client=chroma_client,
+    collection_name="rag_documents",
+    embedding_function=embeddings
+)
 
 # 1. Base Retriever (Récupère 10 candidats larges)
 base_retriever = vector_store.as_retriever(search_kwargs={"k": 10})
@@ -66,7 +73,11 @@ llm = ChatOpenAI(
 
 # Prompts
 contextualize_q_prompt = ChatPromptTemplate.from_messages([
-    ("system", "Étang donné un historique de discussion et la dernière question, formule une question autonome sans y répondre."),
+    ("system", (
+        "Étant donné un historique de discussion et la dernière question de l'utilisateur, "
+        "reformule la question en une question autonome compréhensible sans le contexte de la conversation. "
+        "Ne réponds PAS à la question, reformule-la simplement si nécessaire, sinon renvoie-la telle quelle."
+    )),
     MessagesPlaceholder("chat_history"),
     ("human", "{input}"),
 ])
@@ -74,11 +85,28 @@ contextualize_q_prompt = ChatPromptTemplate.from_messages([
 history_aware_question_chain = contextualize_q_prompt | llm | StrOutputParser()
 
 qa_prompt = ChatPromptTemplate.from_messages([
-    ("system", """Tu es un assistant IA précis. Réponds à la question en t'appuyant STRICTEMENT sur le contexte ci-dessous.
-Si le contexte ne contient pas l'information ou que la question est une simple salutation (ex: bonjour, salut, ok), réponds poliment sans utiliser les documents et indique que l'information n'est pas dans les documents si nécessaire.
+    ("system", """Tu es Dora, une assistante intelligente, rigoureuse et bienveillante spécialisée dans l'analyse et l'assistance sur les documents PDF.
 
-Contexte :
-{context}"""),
+### Tes règles et ton comportement :
+
+1. **Identité & Accueil :**
+   - Tu t'appelles **Dora**.
+   - Lorsqu'un utilisateur te salue ou te demande qui tu es, accueille-le chaleureusement, présente-toi en tant que Dora et propose-lui de l'aider à explorer ou comprendre ses documents PDF.
+
+2. **Fidélité absolue aux documents (Zéro hallucination) :**
+   - Réponds aux questions en te basant **STRICTEMENT et UNIQUEMENT** sur les extraits de documents fournis dans le contexte ci-dessous.
+   - N'extrapole pas et n'invente aucun élément, chiffre ou fait non présent dans le contexte.
+   - Si la réponse ne figure pas dans le contexte ou que les documents ne permettent pas d'y répondre, dis-le clairement et poliment (ex: "D'après les documents fournis, cette information n'est pas mentionnée.").
+
+3. **Format & Clarté :**
+   - Réponds en français soigné, avec un ton professionnel, clair et accessible.
+   - Utilise une mise en page Markdown aérée : listes à puces, points numérotés ou texte en gras pour mettre en avant les points clés et faciliter la lecture.
+   - Si le document contient des étapes, des chiffres ou des tableaux, synthétise-les fidèlement.
+
+Contexte extrait des documents :
+--------------------------------
+{context}
+--------------------------------"""),
     MessagesPlaceholder("chat_history"),
     ("human", "{input}"),
 ])
@@ -129,7 +157,7 @@ async def ingest_file(file_path: Path, original_filename: Optional[str] = None) 
     if original_filename:
         for doc in raw_docs:
             doc.metadata["source"] = original_filename
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = splitter.split_documents(raw_docs)
     if not chunks:
         raise ValueError(
@@ -143,7 +171,7 @@ async def ingest_file(file_path: Path, original_filename: Optional[str] = None) 
 
 # --- Execution RAG avec Streaming (FastAPI) & Langfuse Callbacks ---
 
-@observe(name="rag-query-stream")
+@observe(name="rag-query-stream") 
 async def run_rag_astream(query: str, chat_history: List[BaseMessage], session_id: Optional[str] = None) -> Tuple[List[Dict[str, Any]], AsyncGenerator[str, None]]:
     """Version asynchrone pour FastAPI avec streaming SSE."""
     with propagate_attributes(trace_name="rag-chat-stream", session_id=session_id):

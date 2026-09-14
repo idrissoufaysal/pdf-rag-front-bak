@@ -40,7 +40,7 @@ const aiAuthor = {
   avatarUrl: '/oo.jpg',
 };
 
-const MAX_MESSAGES_PER_DAY = 40;
+const MAX_MESSAGES_PER_DAY = 20;
 
 const TypingIndicator = () => (
   <div className="flex items-center space-x-1 p-2">
@@ -204,7 +204,7 @@ const Chat: React.FC<ChatProps> = ({ pdfText, fileId, onSourceClick }) => {
                   <MarkdownRenderer>{m.text}</MarkdownRenderer>
                 )}
               </div>
-              {index === aiMessageIndex.current && !isLoading && sources.length > 0 && (
+              {/* {index === aiMessageIndex.current && !isLoading && sources.length > 0 && (
                 <div className="sources-list" style={{ marginTop: 8 }}>
                   <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Sources :</div>
                   <ul style={{ paddingLeft: 16 }}>
@@ -224,7 +224,7 @@ const Chat: React.FC<ChatProps> = ({ pdfText, fileId, onSourceClick }) => {
                     ))}
                   </ul>
                 </div>
-              )}
+              )} */}
               {index < chatMessages.length - 1 && <div className="horizontal-line" />}
             </div>
           </div>
